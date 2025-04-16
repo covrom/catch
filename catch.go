@@ -2,10 +2,12 @@ package catch
 
 import (
 	"fmt"
-	"log/slog"
+
 	"net/http"
 	"runtime"
 	"strings"
+
+	"log/slog"
 
 	"github.com/go-chi/render"
 )

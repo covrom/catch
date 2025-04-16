@@ -1,6 +1,7 @@
 package catch
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
@@ -86,4 +87,28 @@ func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, err
 	}
 
 	return dec_msg, nil
+}
+
+// Sign message using private key
+func SignWithPrivateKey(msg []byte, priv *rsa.PrivateKey) ([]byte, error) {
+	mHash := crypto.SHA256
+	hasher := mHash.New()
+	hasher.Write(msg)
+
+	// Sign the string and return the encoded bytes
+	if sigBytes, err := rsa.SignPKCS1v15(rand.Reader, priv, mHash, hasher.Sum(nil)); err == nil {
+		return sigBytes, nil
+	} else {
+		return nil, err
+	}
+}
+
+// Verify message using public key
+func VerifyWithPublicKey(msg []byte, sig []byte, pubkey *rsa.PublicKey) error {
+	mHash := crypto.SHA256
+	hasher := mHash.New()
+	hasher.Write(msg)
+
+	// Verify the signature
+	return rsa.VerifyPKCS1v15(pubkey, mHash, hasher.Sum(nil), sig)
 }

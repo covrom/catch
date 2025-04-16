@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// replace host and proto in reverse proxied request with "forwarded" headers
 func RequestForwardedHostProtoMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.Host = RequestHost(r)
@@ -16,30 +17,38 @@ func RequestForwardedHostProtoMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// queried or forwarded host
 func RequestHost(r *http.Request) (host string) {
+	// not standard, but most popular
 	host = r.Header.Get("X-Forwarded-Host")
 	if host != "" {
 		return
 	}
+	// RFC 7239
 	host = r.Header.Get("Forwarded")
 	_, _, host = parseForwarded(host)
 	if host != "" {
 		return
 	}
+	// if all else fails fall back to request host
 	host = r.Host
 	return
 }
 
+// queried or forwarded protocol
 func RequestProto(r *http.Request) (proto string) {
+	// not standard, but most popular
 	proto = r.Header.Get("X-Forwarded-Proto")
 	if proto != "" {
 		return
 	}
+	// RFC 7239
 	host := r.Header.Get("Forwarded")
 	_, proto, _ = parseForwarded(host)
 	if proto != "" {
 		return
 	}
+	// if all else fails fall back to request host
 	proto = r.URL.Scheme
 	if proto != "" {
 		return
@@ -108,12 +117,18 @@ func isPrivateAddress(address string) (bool, error) {
 }
 
 func RealIPFromRequest(r *http.Request) string {
+	// Fetch header value
 	xRealIP := r.Header.Get("X-Real-Ip")
 	xForwardedFor := r.Header.Get("X-Forwarded-For")
 
+	// slog.Info("RealIPFromRequest", "xRealIP", xRealIP, "xForwardedFor", xForwardedFor)
+
+	// If both empty, return IP from remote address
 	if xRealIP == "" && xForwardedFor == "" {
 		var remoteIP string
 
+		// If there are colon in remote address, remove the port number
+		// otherwise, return remote address as is
 		if strings.ContainsRune(r.RemoteAddr, ':') {
 			remoteIP, _, _ = net.SplitHostPort(r.RemoteAddr)
 		} else {
@@ -123,6 +138,7 @@ func RealIPFromRequest(r *http.Request) string {
 		return remoteIP
 	}
 
+	// Check list of IP in X-Forwarded-For and return the first global address
 	for _, address := range strings.Split(xForwardedFor, ",") {
 		address = strings.TrimSpace(address)
 		isPrivate, err := isPrivateAddress(address)
@@ -131,5 +147,6 @@ func RealIPFromRequest(r *http.Request) string {
 		}
 	}
 
+	// If nothing succeed, return X-Real-IP
 	return xRealIP
 }
