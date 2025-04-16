@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// replace host and proto in reverse proxied request with "forwarded" headers
+// RequestForwardedHostProtoMiddleware updates request host and protocol from forwarded headers
 func RequestForwardedHostProtoMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.Host = RequestHost(r)
@@ -17,38 +17,38 @@ func RequestForwardedHostProtoMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// queried or forwarded host
+// RequestHost returns the host from forwarded headers or fallback to request host
 func RequestHost(r *http.Request) (host string) {
-	// not standard, but most popular
+	// Non-standard but most popular header
 	host = r.Header.Get("X-Forwarded-Host")
 	if host != "" {
 		return
 	}
-	// RFC 7239
+	// RFC 7239 standard header
 	host = r.Header.Get("Forwarded")
 	_, _, host = parseForwarded(host)
 	if host != "" {
 		return
 	}
-	// if all else fails fall back to request host
+	// Fallback to request host
 	host = r.Host
 	return
 }
 
-// queried or forwarded protocol
+// RequestProto returns the protocol from forwarded headers or fallback to request scheme
 func RequestProto(r *http.Request) (proto string) {
-	// not standard, but most popular
+	// Non-standard but most popular header
 	proto = r.Header.Get("X-Forwarded-Proto")
 	if proto != "" {
 		return
 	}
-	// RFC 7239
+	// RFC 7239 standard header
 	host := r.Header.Get("Forwarded")
 	_, proto, _ = parseForwarded(host)
 	if proto != "" {
 		return
 	}
-	// if all else fails fall back to request host
+	// Fallback to request scheme
 	proto = r.URL.Scheme
 	if proto != "" {
 		return
@@ -58,6 +58,7 @@ func RequestProto(r *http.Request) (proto string) {
 	return
 }
 
+// parseForwarded parses RFC 7239 Forwarded header values
 func parseForwarded(forwarded string) (addr, proto, host string) {
 	if forwarded == "" {
 		return
@@ -101,6 +102,7 @@ func init() {
 	}
 }
 
+// isPrivateAddress checks if an IP address is in private ranges
 func isPrivateAddress(address string) (bool, error) {
 	ipAddress := net.ParseIP(address)
 	if ipAddress == nil {
@@ -116,19 +118,17 @@ func isPrivateAddress(address string) (bool, error) {
 	return false, nil
 }
 
+// RealIPFromRequest returns the real client IP from request headers
 func RealIPFromRequest(r *http.Request) string {
-	// Fetch header value
+	// Fetch header values
 	xRealIP := r.Header.Get("X-Real-Ip")
 	xForwardedFor := r.Header.Get("X-Forwarded-For")
-
-	// slog.Info("RealIPFromRequest", "xRealIP", xRealIP, "xForwardedFor", xForwardedFor)
 
 	// If both empty, return IP from remote address
 	if xRealIP == "" && xForwardedFor == "" {
 		var remoteIP string
 
-		// If there are colon in remote address, remove the port number
-		// otherwise, return remote address as is
+		// Remove port number if present
 		if strings.ContainsRune(r.RemoteAddr, ':') {
 			remoteIP, _, _ = net.SplitHostPort(r.RemoteAddr)
 		} else {
@@ -138,7 +138,7 @@ func RealIPFromRequest(r *http.Request) string {
 		return remoteIP
 	}
 
-	// Check list of IP in X-Forwarded-For and return the first global address
+	// Check X-Forwarded-For for first non-private IP
 	for _, address := range strings.Split(xForwardedFor, ",") {
 		address = strings.TrimSpace(address)
 		isPrivate, err := isPrivateAddress(address)
@@ -147,6 +147,6 @@ func RealIPFromRequest(r *http.Request) string {
 		}
 	}
 
-	// If nothing succeed, return X-Real-IP
+	// Fallback to X-Real-IP
 	return xRealIP
 }
