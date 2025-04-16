@@ -13,19 +13,19 @@ import (
 	"time"
 )
 
-// RateLimiterConfig содержит конфигурацию для ограничителя запросов
+// RateLimiterConfig contains configuration for the rate limiter
 type RateLimiterConfig struct {
-	UserRequestsPerSecond   float64       // Лимит запросов в секунду на пользователя
-	UserBurst               int           // Максимальное количество запросов за раз
-	GlobalRequestsPerSecond float64       // Глобальный лимит запросов в секунду
-	GlobalBurst             int           // Глобальный burst-лимит
-	CookieName              string        // Название куки для идентификации пользователя
-	CookieMaxAge            int           // Время жизни куки в секундах
-	CleanupInterval         time.Duration // Интервал очистки неиспользуемых данных
-	EncryptionKey           []byte        // Ключ шифрования (32 байта)
+	UserRequestsPerSecond   float64       // Requests per second limit per user
+	UserBurst               int           // Maximum burst requests allowed per user
+	GlobalRequestsPerSecond float64       // Global requests per second limit
+	GlobalBurst             int           // Global burst limit
+	CookieName              string        // Cookie name for user identification
+	CookieMaxAge            int           // Cookie lifetime in seconds
+	CleanupInterval         time.Duration // Interval for cleaning up unused data
+	EncryptionKey           []byte        // Encryption key (32 bytes for AES-256)
 }
 
-// RateLimiter реализует middleware для ограничения запросов
+// RateLimiter implements a middleware for request rate limiting
 type RateLimiter struct {
 	config        *RateLimiterConfig
 	globalLimiter *TokenBucket
@@ -37,16 +37,16 @@ type RateLimiter struct {
 	aead          cipher.AEAD
 }
 
-// TokenBucket реализует алгоритм "ведро с токенами"
+// TokenBucket implements the token bucket algorithm for rate limiting
 type TokenBucket struct {
-	capacity   int        // Вместимость ведра
-	tokens     int        // Текущее количество токенов
-	refillRate float64    // Скорость пополнения (токенов в секунду)
-	lastRefill time.Time  // Время последнего пополнения
-	mu         sync.Mutex // Мьютекс для потокобезопасности
+	capacity   int        // Bucket capacity
+	tokens     int        // Current number of tokens
+	refillRate float64    // Refill rate (tokens per second)
+	lastRefill time.Time  // Time of last refill
+	mu         sync.Mutex // Mutex for thread safety
 }
 
-// NewRateLimiter создает новый RateLimiter
+// NewRateLimiter creates a new RateLimiter instance
 func NewRateLimiter(config *RateLimiterConfig) (*RateLimiter, error) {
 	if config == nil {
 		config = &RateLimiterConfig{
@@ -89,13 +89,13 @@ func NewRateLimiter(config *RateLimiterConfig) (*RateLimiter, error) {
 	return rl, nil
 }
 
-// Stop останавливает фоновые процессы rate limiter
+// Stop terminates background processes of the rate limiter
 func (rl *RateLimiter) Stop() {
 	close(rl.stopChan)
 	rl.wg.Wait()
 }
 
-// cleanupWorker выполняет периодическую очистку неиспользуемых данных
+// cleanupWorker performs periodic cleanup of unused data
 func (rl *RateLimiter) cleanupWorker() {
 	defer rl.wg.Done()
 
@@ -107,18 +107,18 @@ func (rl *RateLimiter) cleanupWorker() {
 		case <-ticker.C:
 			rl.cleanupMaps()
 		case <-rl.stopChan:
-			rl.cleanupMaps() // Последняя очистка перед выходом
+			rl.cleanupMaps() // Final cleanup before exit
 			return
 		}
 	}
 }
 
-// cleanupMaps пересоздает maps для предотвращения их разрастания
+// cleanupMaps recreates maps to prevent them from growing indefinitely
 func (rl *RateLimiter) cleanupMaps() {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
-	// Очищаем userLimiters
+	// Clean up userLimiters
 	newUserLimiters := make(map[string]*TokenBucket)
 	for userID, limiter := range rl.userLimiters {
 		limiter.mu.Lock()
@@ -131,7 +131,7 @@ func (rl *RateLimiter) cleanupMaps() {
 	}
 	rl.userLimiters = newUserLimiters
 
-	// Очищаем blockedUsers
+	// Clean up blockedUsers
 	newBlockedUsers := make(map[string]time.Time)
 	now := time.Now()
 	for userID, blockedUntil := range rl.blockedUsers {
@@ -142,7 +142,7 @@ func (rl *RateLimiter) cleanupMaps() {
 	rl.blockedUsers = newBlockedUsers
 }
 
-// NewTokenBucket создает новое ведро с токенами
+// NewTokenBucket creates a new token bucket instance
 func NewTokenBucket(rate float64, capacity int) *TokenBucket {
 	return &TokenBucket{
 		capacity:   capacity,
@@ -152,7 +152,7 @@ func NewTokenBucket(rate float64, capacity int) *TokenBucket {
 	}
 }
 
-// Take пытается взять токен из ведра
+// Take attempts to take a token from the bucket
 func (tb *TokenBucket) Take() bool {
 	tb.mu.Lock()
 	defer tb.mu.Unlock()
@@ -174,44 +174,44 @@ func (tb *TokenBucket) Take() bool {
 	return false
 }
 
-// Middleware возвращает middleware функцию для ограничения запросов
+// Middleware returns a middleware function for request rate limiting
 func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// 1. Проверяем глобальный лимит
+		// 1. Check global limit
 		if !rl.globalLimiter.Take() {
 			http.Error(w, "Server too busy", http.StatusTooManyRequests)
 			return
 		}
 
-		// 2. Получаем идентификатор пользователя
+		// 2. Get user identifier
 		userID := rl.getUserIdentifier(r)
 
-		// 3. Проверяем блокировку пользователя
+		// 3. Check if user is blocked
 		if blockedUntil, ok := rl.isUserBlocked(userID); ok {
 			w.Header().Set("Retry-After", blockedUntil.Format(time.RFC1123))
 			http.Error(w, "Too many requests", http.StatusTooManyRequests)
 			return
 		}
 
-		// 4. Получаем или создаем лимитер для пользователя
+		// 4. Get or create limiter for user
 		userLimiter := rl.getUserLimiter(userID)
 
-		// 5. Проверяем лимит пользователя
+		// 5. Check user limit
 		if !userLimiter.Take() {
 			rl.blockUser(userID)
 			http.Error(w, "Too many requests", http.StatusTooManyRequests)
 			return
 		}
 
-		// 6. Устанавливаем куку, если ее нет
+		// 6. Set cookie if not present
 		rl.setUserCookie(w, userID)
 
-		// Передаем управление следующему обработчику
+		// Pass control to the next handler
 		next.ServeHTTP(w, r)
 	})
 }
 
-// encryptUserID шифрует идентификатор пользователя
+// encryptUserID encrypts user identifier
 func (rl *RateLimiter) encryptUserID(userID string) (string, error) {
 	nonce := make([]byte, rl.aead.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
@@ -222,7 +222,7 @@ func (rl *RateLimiter) encryptUserID(userID string) (string, error) {
 	return base64.URLEncoding.EncodeToString(encrypted), nil
 }
 
-// decryptUserID расшифровывает идентификатор пользователя
+// decryptUserID decrypts user identifier
 func (rl *RateLimiter) decryptUserID(encrypted string) (string, error) {
 	decoded, err := base64.URLEncoding.DecodeString(encrypted)
 	if err != nil {
@@ -244,7 +244,7 @@ func (rl *RateLimiter) decryptUserID(encrypted string) (string, error) {
 	return string(plaintext), nil
 }
 
-// getUserIdentifier возвращает идентификатор пользователя
+// getUserIdentifier returns the user identifier
 func (rl *RateLimiter) getUserIdentifier(r *http.Request) string {
 	cookie, err := r.Cookie(rl.config.CookieName)
 	if err != nil {
@@ -259,7 +259,7 @@ func (rl *RateLimiter) getUserIdentifier(r *http.Request) string {
 	return userID
 }
 
-// isUserBlocked проверяет, заблокирован ли пользователь
+// isUserBlocked checks if user is blocked
 func (rl *RateLimiter) isUserBlocked(userID string) (time.Time, bool) {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
@@ -277,7 +277,7 @@ func (rl *RateLimiter) isUserBlocked(userID string) (time.Time, bool) {
 	return blockedUntil, true
 }
 
-// blockUser блокирует пользователя на 1 минуту
+// blockUser blocks user for 1 minute
 func (rl *RateLimiter) blockUser(userID string) {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
@@ -285,7 +285,7 @@ func (rl *RateLimiter) blockUser(userID string) {
 	rl.blockedUsers[userID] = time.Now().Add(time.Minute)
 }
 
-// getUserLimiter возвращает лимитер для пользователя
+// getUserLimiter returns limiter for user
 func (rl *RateLimiter) getUserLimiter(userID string) *TokenBucket {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
@@ -299,7 +299,7 @@ func (rl *RateLimiter) getUserLimiter(userID string) *TokenBucket {
 	return limiter
 }
 
-// setUserCookie устанавливает зашифрованную куку пользователю
+// setUserCookie sets encrypted cookie for user
 func (rl *RateLimiter) setUserCookie(w http.ResponseWriter, userID string) {
 	encryptedID, err := rl.encryptUserID(userID)
 	if err != nil {
