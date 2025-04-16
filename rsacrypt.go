@@ -9,7 +9,7 @@ import (
 	"fmt"
 )
 
-// Generates private and public key
+// GenerateKeyPair generates an RSA key pair of the given bit size
 func GenerateKeyPair(bits int) (*rsa.PrivateKey, *rsa.PublicKey, error) {
 	privkey, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
@@ -18,22 +18,22 @@ func GenerateKeyPair(bits int) (*rsa.PrivateKey, *rsa.PublicKey, error) {
 	return privkey, &privkey.PublicKey, nil
 }
 
-// Convert private key to bytes (pem)
+// PrivateKeyToBytes converts an RSA private key to PKCS#1 ASN.1 DER bytes
 func PrivateKeyToBytes(priv *rsa.PrivateKey) []byte {
 	return x509.MarshalPKCS1PrivateKey(priv)
 }
 
-// Convert public key to bytes (pem)
+// PublicKeyToBytes converts an RSA public key to PKIX ASN.1 DER bytes
 func PublicKeyToBytes(pub *rsa.PublicKey) ([]byte, error) {
 	return x509.MarshalPKIXPublicKey(pub)
 }
 
-// Convert bytes (pem) to private key
+// BytesToPrivateKey converts PKCS#1 ASN.1 DER bytes to an RSA private key
 func BytesToPrivateKey(priv []byte) (*rsa.PrivateKey, error) {
 	return x509.ParsePKCS1PrivateKey(priv)
 }
 
-// Convert bytes (pem) to public key
+// BytesToPublicKey converts PKIX ASN.1 DER bytes to an RSA public key
 func BytesToPublicKey(pub []byte) (*rsa.PublicKey, error) {
 	pb, err := x509.ParsePKIXPublicKey(pub)
 	if err != nil {
@@ -47,6 +47,7 @@ func BytesToPublicKey(pub []byte) (*rsa.PublicKey, error) {
 	return nil, fmt.Errorf("Expected *rsa.PublicKey, got %T", pb)
 }
 
+// chunkBy splits a slice into chunks of the given size
 func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
 	for chunkSize < len(items) {
 		items, chunks = items[chunkSize:], append(chunks, items[0:chunkSize:chunkSize])
@@ -54,7 +55,7 @@ func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
 	return append(chunks, items)
 }
 
-// Encrypt message using public key
+// EncryptWithPublicKey encrypts a message using RSA-OAEP with SHA512
 func EncryptWithPublicKey(msg []byte, pub *rsa.PublicKey) ([]byte, error) {
 	hash := sha512.New()
 
@@ -73,7 +74,7 @@ func EncryptWithPublicKey(msg []byte, pub *rsa.PublicKey) ([]byte, error) {
 	return result, nil
 }
 
-// Decrypt message using private key
+// DecryptWithPrivateKey decrypts a message using RSA-OAEP with SHA512
 func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, error) {
 	hash := sha512.New()
 	dec_msg := []byte("")
@@ -89,7 +90,7 @@ func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, err
 	return dec_msg, nil
 }
 
-// Sign message using private key
+// SignWithPrivateKey signs a message using RSA PKCS#1v1.5 with SHA256
 func SignWithPrivateKey(msg []byte, priv *rsa.PrivateKey) ([]byte, error) {
 	mHash := crypto.SHA256
 	hasher := mHash.New()
@@ -103,7 +104,7 @@ func SignWithPrivateKey(msg []byte, priv *rsa.PrivateKey) ([]byte, error) {
 	}
 }
 
-// Verify message using public key
+// VerifyWithPublicKey verifies a message signature using RSA PKCS#1v1.5 with SHA256
 func VerifyWithPublicKey(msg []byte, sig []byte, pubkey *rsa.PublicKey) error {
 	mHash := crypto.SHA256
 	hasher := mHash.New()
