@@ -18,48 +18,33 @@ The `catch` package provides a collection of HTTP middleware and utilities for G
 
 ## Installation
 
-1. **Clone the Repository** (if you are contributing or want the source code directly):
-   ```bash
-   git clone https://github.com/yourusername/catch.git
-   cd catch
-   ```
+Add the package to your Go project by running:
+```bash
+go get github.com/covrom/catch@latest
+go mod tidy
+```
 
-2. **Install the Package** (if you are using it as a dependency):
-   Add the package to your Go project by running:
-   ```bash
-   go get github.com/yourusername/catch
-   ```
+**Verify Installation**:
+Create a simple Go program to test the package import:
+```go
+package main
 
-3. **Install Dependencies**:
-   The package relies on the following external libraries, which will be fetched automatically when you build or run your project:
-   - `github.com/go-chi/chi/v5`
-   - `github.com/go-chi/render`
-   Ensure your `go.mod` file includes these dependencies, or run:
-   ```bash
-   go mod tidy
-   ```
+import (
+    "github.com/covrom/catch"
+    "net/http"
+)
 
-4. **Verify Installation**:
-   Create a simple Go program to test the package import:
-   ```go
-   package main
-
-   import (
-       "github.com/yourusername/catch"
-       "net/http"
-   )
-
-   func main() {
-       http.ListenAndServe(":8080", catch.Recoverer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-           w.Write([]byte("Hello, World!"))
-       })))
-   }
-   ```
-   Run the program:
-   ```bash
-   go run main.go
-   ```
-   Visit `http://localhost:8080` to verify the server is running.
+func main() {
+    http.ListenAndServe(":8080", catch.Recoverer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.Write([]byte("Hello, World!"))
+    })))
+}
+```
+Run the program:
+```bash
+go run main.go
+```
+Visit `http://localhost:8080` to verify the server is running.
 
 ## Usage
 
@@ -74,7 +59,7 @@ package main
 
 import (
     "github.com/go-chi/chi/v5"
-    "github.com/yourusername/catch"
+    "github.com/covrom/catch"
     "net/http"
 )
 
@@ -97,7 +82,7 @@ package main
 
 import (
     "github.com/go-chi/chi/v5"
-    "github.com/yourusername/catch"
+    "github.com/covrom/catch"
     "net/http"
 )
 
@@ -120,7 +105,7 @@ package main
 
 import (
     "github.com/go-chi/chi/v5"
-    "github.com/yourusername/catch"
+    "github.com/covrom/catch"
     "net/http"
 )
 
@@ -143,7 +128,7 @@ package main
 
 import (
     "github.com/go-chi/chi/v5"
-    "github.com/yourusername/catch"
+    "github.com/covrom/catch"
     "log/slog"
     "net/http"
     "os"
@@ -171,7 +156,7 @@ package main
 
 import (
     "github.com/go-chi/chi/v5"
-    "github.com/yourusername/catch"
+    "github.com/covrom/catch"
     "net/http"
 )
 
@@ -210,7 +195,7 @@ package main
 
 import (
     "fmt"
-    "github.com/yourusername/catch"
+    "github.com/covrom/catch"
 )
 
 func main() {
@@ -278,44 +263,10 @@ logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 middleware := catch.NewStructuredLogger(logger.Handler(), true) // Log only errors
 ```
 
-## Building and Running
-
-1. **Build the Application**:
-   ```bash
-   go build -o myapp
-   ```
-
-2. **Run the Application**:
-   ```bash
-   ./myapp
-   ```
-
-3. **Run Tests** (if you have written tests):
-   ```bash
-   go test ./...
-   ```
-
-## Contributing
-
-1. Fork the repository.
-2. Create a new branch:
-   ```bash
-   git checkout -b feature/your-feature
-   ```
-3. Make your changes and commit:
-   ```bash
-   git commit -m "Add your feature"
-   ```
-4. Push to your fork:
-   ```bash
-   git push origin feature/your-feature
-   ```
-5. Create a pull request on GitHub.
-
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
 
 ## Support
 
-For issues or questions, open an issue on the GitHub repository or contact the maintainers at [your contact email].
+For issues or questions, open an issue on the GitHub repository.
