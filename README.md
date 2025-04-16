@@ -1,62 +1,75 @@
-Catch - Go Middleware Package
-The catch package provides a collection of HTTP middleware and utilities for Go applications, including request forwarding, panic recovery, security headers, structured logging, rate limiting, and RSA encryption. This README provides instructions for installing, configuring, and using the package.
-Features
+# Catch - Go Middleware Package
 
-Request Forwarding Middleware: Updates request host, protocol, and client IP based on forwarded headers (X-Forwarded-Host, X-Forwarded-Proto, X-Forwarded-For, etc.).
-Panic Recovery Middleware: Recovers from panics, logs stack traces, and returns a structured error response.
-Security Headers Middleware: Adds HTTP security headers like Strict-Transport-Security, X-XSS-Protection, and X-Content-Type-Options.
-Structured Logging Middleware: Logs HTTP requests with customizable fields using slog, supporting request IDs, headers, and performance metrics.
-Rate Limiting Middleware: Implements token bucket-based rate limiting for both global and per-user requests, with encrypted user identification via cookies.
-RSA Cryptography Utilities: Provides functions for generating RSA key pairs, encrypting/decrypting messages, and signing/verifying signatures.
+The `catch` package provides a collection of HTTP middleware and utilities for Go applications, including request forwarding, panic recovery, security headers, structured logging, rate limiting, and RSA encryption. This README provides instructions for installing, configuring, and using the package.
 
-Prerequisites
+## Features
 
-Go: Version 1.18 or higher.
-Dependencies: The package uses external libraries, which will be installed automatically via go get.
+- **Request Forwarding Middleware**: Updates request host, protocol, and client IP based on forwarded headers (`X-Forwarded-Host`, `X-Forwarded-Proto`, `X-Forwarded-For`, etc.).
+- **Panic Recovery Middleware**: Recovers from panics, logs stack traces, and returns a structured error response.
+- **Security Headers Middleware**: Adds HTTP security headers like `Strict-Transport-Security`, `X-XSS-Protection`, and `X-Content-Type-Options`.
+- **Structured Logging Middleware**: Logs HTTP requests with customizable fields using `slog`, supporting request IDs, headers, and performance metrics.
+- **Rate Limiting Middleware**: Implements token bucket-based rate limiting for both global and per-user requests, with encrypted user identification via cookies.
+- **RSA Cryptography Utilities**: Provides functions for generating RSA key pairs, encrypting/decrypting messages, and signing/verifying signatures.
 
-Installation
+## Prerequisites
 
-Clone the Repository (if you are contributing or want the source code directly):
-git clone https://github.com/yourusername/catch.git
-cd catch
+- **Go**: Version 1.18 or higher.
+- **Dependencies**: The package uses external libraries, which will be installed automatically via `go get`.
 
+## Installation
 
-Install the Package (if you are using it as a dependency):Add the package to your Go project by running:
-go get github.com/yourusername/catch
+1. **Clone the Repository** (if you are contributing or want the source code directly):
+   ```bash
+   git clone https://github.com/yourusername/catch.git
+   cd catch
+   ```
 
+2. **Install the Package** (if you are using it as a dependency):
+   Add the package to your Go project by running:
+   ```bash
+   go get github.com/yourusername/catch
+   ```
 
-Install Dependencies:The package relies on the following external libraries, which will be fetched automatically when you build or run your project:
+3. **Install Dependencies**:
+   The package relies on the following external libraries, which will be fetched automatically when you build or run your project:
+   - `github.com/go-chi/chi/v5`
+   - `github.com/go-chi/render`
+   Ensure your `go.mod` file includes these dependencies, or run:
+   ```bash
+   go mod tidy
+   ```
 
-github.com/go-chi/chi/v5
-github.com/go-chi/renderEnsure your go.mod file includes these dependencies, or run:
+4. **Verify Installation**:
+   Create a simple Go program to test the package import:
+   ```go
+   package main
 
-go mod tidy
+   import (
+       "github.com/yourusername/catch"
+       "net/http"
+   )
 
+   func main() {
+       http.ListenAndServe(":8080", catch.Recoverer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+           w.Write([]byte("Hello, World!"))
+       })))
+   }
+   ```
+   Run the program:
+   ```bash
+   go run main.go
+   ```
+   Visit `http://localhost:8080` to verify the server is running.
 
-Verify Installation:Create a simple Go program to test the package import:
-package main
+## Usage
 
-import (
-    "github.com/yourusername/catch"
-    "net/http"
-)
+Below are examples of how to use each component of the `catch` package in a Go HTTP server.
 
-func main() {
-    http.ListenAndServe(":8080", catch.Recoverer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("Hello, World!"))
-    })))
-}
+### 1. Request Forwarding Middleware
 
-Run the program:
-go run main.go
+The `RequestForwardedHostProtoMiddleware` updates the request's host, protocol, and client IP based on forwarded headers, useful for applications behind proxies.
 
-Visit http://localhost:8080 to verify the server is running.
-
-
-Usage
-Below are examples of how to use each component of the catch package in a Go HTTP server.
-1. Request Forwarding Middleware
-The RequestForwardedHostProtoMiddleware updates the request's host, protocol, and client IP based on forwarded headers, useful for applications behind proxies.
+```go
 package main
 
 import (
@@ -73,9 +86,13 @@ func main() {
     })
     http.ListenAndServe(":8080", r)
 }
+```
 
-2. Panic Recovery Middleware
-The Recoverer middleware catches panics, logs them, and returns a 500 Internal Server Error response.
+### 2. Panic Recovery Middleware
+
+The `Recoverer` middleware catches panics, logs them, and returns a `500 Internal Server Error` response.
+
+```go
 package main
 
 import (
@@ -92,9 +109,13 @@ func main() {
     })
     http.ListenAndServe(":8080", r)
 }
+```
 
-3. Security Headers Middleware
-The Protection middleware adds security headers to responses.
+### 3. Security Headers Middleware
+
+The `Protection` middleware adds security headers to responses.
+
+```go
 package main
 
 import (
@@ -111,9 +132,13 @@ func main() {
     })
     http.ListenAndServe(":8080", r)
 }
+```
 
-4. Structured Logging Middleware
-The NewStructuredLogger middleware logs HTTP requests with structured fields using slog.
+### 4. Structured Logging Middleware
+
+The `NewStructuredLogger` middleware logs HTTP requests with structured fields using `slog`.
+
+```go
 package main
 
 import (
@@ -135,9 +160,13 @@ func main() {
     })
     http.ListenAndServe(":8080", r)
 }
+```
 
-5. Rate Limiting Middleware
-The RateLimiter middleware enforces request limits per user and globally, using encrypted cookies for user identification.
+### 5. Rate Limiting Middleware
+
+The `RateLimiter` middleware enforces request limits per user and globally, using encrypted cookies for user identification.
+
+```go
 package main
 
 import (
@@ -170,9 +199,13 @@ func main() {
     })
     http.ListenAndServe(":8080", r)
 }
+```
 
-6. RSA Cryptography Utilities
-The rsacrypt utilities provide RSA key generation, encryption/decryption, and signing/verification.
+### 6. RSA Cryptography Utilities
+
+The `rsacrypt` utilities provide RSA key generation, encryption/decryption, and signing/verification.
+
+```go
 package main
 
 import (
@@ -215,10 +248,15 @@ func main() {
         fmt.Println("Signature verification failed")
     }
 }
+```
 
-Configuration
-Rate Limiter Configuration
-The RateLimiterConfig struct allows customization of the rate limiter:
+## Configuration
+
+### Rate Limiter Configuration
+
+The `RateLimiterConfig` struct allows customization of the rate limiter:
+
+```go
 config := &catch.RateLimiterConfig{
     UserRequestsPerSecond:   10.0,           // 10 requests per second per user
     UserBurst:               20,             // Allow bursts up to 20 requests
@@ -229,42 +267,55 @@ config := &catch.RateLimiterConfig{
     CleanupInterval:         5 * time.Minute, // Cleanup unused data every 5 minutes
     EncryptionKey:           []byte("32-byte-long-key-1234567890123456"), // 32-byte AES-256 key
 }
+```
 
-Structured Logger Configuration
-The NewStructuredLogger function accepts a slog.Handler and a boolean to log only errors:
+### Structured Logger Configuration
+
+The `NewStructuredLogger` function accepts a `slog.Handler` and a boolean to log only errors:
+
+```go
 logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 middleware := catch.NewStructuredLogger(logger.Handler(), true) // Log only errors
+```
 
-Building and Running
+## Building and Running
 
-Build the Application:
-go build -o myapp
+1. **Build the Application**:
+   ```bash
+   go build -o myapp
+   ```
 
+2. **Run the Application**:
+   ```bash
+   ./myapp
+   ```
 
-Run the Application:
-./myapp
+3. **Run Tests** (if you have written tests):
+   ```bash
+   go test ./...
+   ```
 
+## Contributing
 
-Run Tests (if you have written tests):
-go test ./...
+1. Fork the repository.
+2. Create a new branch:
+   ```bash
+   git checkout -b feature/your-feature
+   ```
+3. Make your changes and commit:
+   ```bash
+   git commit -m "Add your feature"
+   ```
+4. Push to your fork:
+   ```bash
+   git push origin feature/your-feature
+   ```
+5. Create a pull request on GitHub.
 
+## License
 
+This project is licensed under the MIT License. See the `LICENSE` file for details.
 
-Contributing
+## Support
 
-Fork the repository.
-Create a new branch:git checkout -b feature/your-feature
-
-
-Make your changes and commit:git commit -m "Add your feature"
-
-
-Push to your fork:git push origin feature/your-feature
-
-
-Create a pull request on GitHub.
-
-License
-This project is licensed under the MIT License. See the LICENSE file for details.
-Support
 For issues or questions, open an issue on the GitHub repository or contact the maintainers at [your contact email].
