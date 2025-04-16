@@ -19,7 +19,7 @@ const criticalElapsed = 5 * time.Second
 // on this work, designed for context-based http routers.
 // Example:
 // logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-// slog.SetDefault(logger) 
+// slog.SetDefault(logger)
 // hlog := NewStructuredLogger(slog.Default().Handler(), true)
 func NewStructuredLogger(handler slog.Handler, onlyErrs bool) func(next http.Handler) http.Handler {
 	return middleware.RequestLogger(
@@ -30,14 +30,15 @@ func NewStructuredLogger(handler slog.Handler, onlyErrs bool) func(next http.Han
 	)
 }
 
+// StructuredLogger implements the LogFormatter interface
 type StructuredLogger struct {
 	Logger     slog.Handler
 	OnlyErrors bool
 }
 
+// NewLogEntry creates a new log entry for each request
 func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 	var logFields []slog.Attr
-	// logFields = append(logFields, slog.String("ts", time.Now().UTC().Format(time.RFC1123)))
 
 	if reqID := middleware.GetReqID(r.Context()); reqID != "" {
 		logFields = append(logFields, slog.String("req_id", reqID))
@@ -62,17 +63,17 @@ func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 		Logger:     slog.New(handler),
 	}
 
-	// entry.Logger.LogAttrs(entry.Ctx, slog.LevelInfo, "request started")
-
 	return &entry
 }
 
+// StructuredLoggerEntry represents a single request log entry
 type StructuredLoggerEntry struct {
 	Ctx        context.Context
 	OnlyErrors bool
 	Logger     *slog.Logger
 }
 
+// Write logs the completion of the request
 func (l *StructuredLoggerEntry) Write(status, bytes int, header http.Header, elapsed time.Duration, extra interface{}) {
 	lvl := slog.LevelInfo
 	if l.OnlyErrors {
@@ -92,6 +93,7 @@ func (l *StructuredLoggerEntry) Write(status, bytes int, header http.Header, ela
 	)
 }
 
+// Panic logs panic information
 func (l *StructuredLoggerEntry) Panic(v interface{}, stack []byte) {
 	l.Logger.LogAttrs(l.Ctx, slog.LevelError, "",
 		slog.String("stack", string(stack)),
@@ -111,18 +113,21 @@ func GetLogEntry(r *http.Request) *slog.Logger {
 	return entry.Logger
 }
 
+// LogEntrySetField adds a field to the log entry
 func LogEntrySetField(r *http.Request, key string, value interface{}) {
 	if entry, ok := r.Context().Value(middleware.LogEntryCtxKey).(*StructuredLoggerEntry); ok {
 		entry.Logger = entry.Logger.With(key, value)
 	}
 }
 
+// LogEntrySetAttrs adds multiple attributes to the log entry
 func LogEntrySetAttrs(r *http.Request, attrs ...any) {
 	if entry, ok := r.Context().Value(middleware.LogEntryCtxKey).(*StructuredLoggerEntry); ok {
 		entry.Logger = entry.Logger.With(attrs...)
 	}
 }
 
+// LogEntrySetFields adds multiple fields to the log entry
 func LogEntrySetFields(r *http.Request, fields map[string]interface{}) {
 	if entry, ok := r.Context().Value(middleware.LogEntryCtxKey).(*StructuredLoggerEntry); ok {
 		for k, v := range fields {
@@ -131,12 +136,14 @@ func LogEntrySetFields(r *http.Request, fields map[string]interface{}) {
 	}
 }
 
+// LogAllStatuses configures the logger to log all statuses, not just errors
 func LogAllStatuses(r *http.Request) {
 	if entry, ok := r.Context().Value(middleware.LogEntryCtxKey).(*StructuredLoggerEntry); ok {
 		entry.OnlyErrors = false
 	}
 }
 
+// LogHeaders adds request headers to the log entry
 func LogHeaders(r *http.Request) {
 	if len(r.Header) > 0 {
 		headerField := make([]any, 0, 2*len(r.Header))
@@ -156,6 +163,7 @@ func LogHeaders(r *http.Request) {
 	}
 }
 
+// GetRequestIdLogger returns a logger with request ID
 func GetRequestIdLogger(r *http.Request) *slog.Logger {
 	if reqID := middleware.GetReqID(r.Context()); reqID != "" {
 		return slog.With(slog.String("req_id", reqID))
